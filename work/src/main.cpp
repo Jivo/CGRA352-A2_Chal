@@ -36,23 +36,31 @@ int main( int argc, char** argv ) {
 	texture = imread(argv[2], CV_LOAD_IMAGE_COLOR);
 	if (!initPatch.data || !texture.data) {cout << "invalid arguments";}
 
-	vector<Mat> patches = getPatches(texture, initPatch.size(), 60);
+	vector<Mat> patches = getPatches(texture, initPatch.size(), 1);
 	Mat rightOverlap = overlapRight(initPatch);
 	
 	Mat bestPatch = bestOverlap(rightOverlap, patches);
 	Mat leftOverlap = overlapLeft(bestPatch);
 	
-	//Mat diff = calcDiffernece(rightOverlap, leftOverlap);
 	vector<int> seam = getSeam(calcDiffernece(rightOverlap, leftOverlap));
 
 	Mat newOverlap = combineOverlap(rightOverlap, leftOverlap, seam);
 	Mat merged = mergePatches(initPatch, bestPatch, newOverlap);
 
+	imwrite("work/res/saves/merged.jpg", merged);
+
 	namedWindow("Merged", WINDOW_AUTOSIZE);
 	imshow("Merged", merged);
 
+	Mat diff = calcDiffernece(rightOverlap, leftOverlap);
+	diff.convertTo(diff, CV_8U);
+	namedWindow("Diff", WINDOW_AUTOSIZE);
+	imshow("Diff", diff);
+
 	drawSeam(newOverlap, seam);
 	merged = mergePatches(initPatch, bestPatch, newOverlap);
+
+	imwrite("work/res/saves/mergedSeam.jpg", merged);
 
 	namedWindow("Merged Seam", WINDOW_AUTOSIZE);
 	imshow("Merged Seam", merged);
@@ -67,6 +75,8 @@ Mat getRandPatch(const Mat&src, Size s) {
 	int maxX = src.cols - 1-s.width;
 	int maxY = src.rows - 1 - s.height;
 
+	maxX = 0;
+	maxY = 0;
 	int randX = int(((double)rand()/RAND_MAX) * maxX);
 	int randY = int(((double)rand()/RAND_MAX) * maxY);
 
@@ -90,7 +100,7 @@ vector<Mat> getPatches(const Mat&src, Size s, int num) {
     OVERLAP RIGHT
 **********************/
 Mat overlapRight(const Mat&src) {
-	Rect r(src.cols - 1 - int((float)src.cols * PROPORTION), 0,
+	Rect r(src.cols - int((float)src.cols * PROPORTION), 0,
 		int((float)src.cols * PROPORTION), src.rows);
 	return src(r);
 }
@@ -126,7 +136,7 @@ Mat bestOverlap(const Mat&current, vector<Mat> others) {
 Mat mergePatches(const Mat& patch1, const Mat& patch2, const Mat&overlap) {
 	Mat merged(patch1.rows, (patch1.cols * 2) - overlap.cols, patch1.type());
 	patch1.copyTo(merged(Rect(0, 0, patch1.cols, patch1.rows)));
-	patch2.copyTo(merged(Rect(patch1.cols - overlap.cols, 0, patch2.cols, patch2.rows)));
+	patch2.copyTo(merged(Rect(patch1.cols  - overlap.cols, 0, patch2.cols, patch2.rows)));
 	overlap.copyTo(merged(Rect(patch1.cols - overlap.cols, 0, overlap.cols, overlap.rows)));
 	return merged;
 }
